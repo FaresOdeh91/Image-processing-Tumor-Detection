@@ -1,0 +1,35 @@
+{
+  "otsu": {
+    "images": 12,
+    "TP": 9,
+    "FP": 0,
+    "FN": 0,
+    "TN": 3,
+    "sensitivity": 1.0,
+    "specificity": 1.0,
+    "mean_dice_tumor_images": 0.962,
+    "mean_iou_tumor_images": 0.927
+  },
+  "region_growing": {
+    "images": 12,
+    "TP": 9,
+    "FP": 0,
+    "FN": 0,
+    "TN": 3,
+    "sensitivity": 1.0,
+    "specificity": 1.0,
+    "mean_dice_tumor_images": 0.915,
+    "mean_iou_tumor_images": 0.844
+  },
+  "watershed": {
+    "images": 12,
+    "TP": 9,
+    "FP": 0,
+    "FN": 0,
+    "TN": 3,
+    "sensitivity": 1.0,
+    "specificity": 1.0,
+    "mean_dice_tumor_images": 0.965,
+    "mean_iou_tumor_images": 0.932
+  }
+}
