@@ -1,42 +1,46 @@
-"""Figures showing every pipeline stage."""
+"""Figures showing every stage of a section's pipeline."""
+import math
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from skimage import segmentation
+
+
+def draw_step(ax, step, gt=None):
+    ax.imshow(step.image, cmap="gray")
+    if step.overlay is not None and step.overlay.any():
+        ax.contour(step.overlay, levels=[0.5], colors="red", linewidths=1.5)
+    if step.fluid is not None and step.fluid.any():
+        ax.contour(step.fluid, levels=[0.5], colors="cyan", linewidths=1.5)
+    if gt is not None and gt.any() and step.overlay is not None:
+        ax.contour(gt, levels=[0.5], colors="lime", linewidths=1, linestyles="--")
+    ax.set_title(step.title)
+    ax.axis("off")
+
+
+def summary_line(res):
+    m = res.measurements
+    if not m.get("detected"):
+        return "No tumor region detected"
+    s = f"Tumor region: {m['area_px']} px"
+    if res.tumor_type:
+        s += f" — suggested type: {res.tumor_type['label']} ({res.tumor_type['confidence']})"
+    return s
 
 
 def save_steps_figure(res, path, title="", gt=None):
-    panels = [
-        ("1. Original", res.original, None),
-        ("2. Denoised", res.denoised, None),
-        ("3. Enhanced (CLAHE)", res.enhanced, None),
-        ("4. Region of interest", res.roi, None),
-        ("5. Raw segmentation", res.raw_mask, None),
-        ("6. Result", res.original, res.mask),
-    ]
-    fig, axes = plt.subplots(2, 3, figsize=(12, 8))
-    for ax, (name, im, mask) in zip(axes.ravel(), panels):
-        ax.imshow(im, cmap="gray")
-        if mask is not None:
-            if mask.any():
-                ax.contour(mask, levels=[0.5], colors="red", linewidths=1.5)
-            if gt is not None and gt.any():
-                ax.contour(gt, levels=[0.5], colors="lime", linewidths=1, linestyles="--")
-        ax.set_title(name)
+    n = len(res.steps)
+    cols = 4 if n > 6 else 3
+    rows = math.ceil(n / cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(4 * cols, 4 * rows))
+    for ax in axes.ravel():
         ax.axis("off")
-
-    m = res.measurements
-    info = (f"Tumor region: area {m['area_px']} px, centroid {m['centroid_rc']}"
-            if m.get("detected") else "No tumor region detected")
+    for ax, step in zip(axes.ravel(), res.steps):
+        draw_step(ax, step, gt)
+    info = summary_line(res)
     if gt is not None:
         info += "   (red = detected, green dashed = ground truth)"
     fig.suptitle(f"{title}\n{info}")
     fig.tight_layout()
-    fig.savefig(path, dpi=110)
+    fig.savefig(path, dpi=100)
     plt.close(fig)
-
-
-def save_overlay(res, path):
-    """Single image with the detected boundary drawn on the original."""
-    out = segmentation.mark_boundaries(res.original, res.mask, color=(1, 0, 0), mode="thick")
-    plt.imsave(path, out)

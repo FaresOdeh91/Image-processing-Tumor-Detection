@@ -1,4 +1,33 @@
+# Python
 __pycache__/
 *.pyc
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
 .venv/
+
+# Datasets and generated output (download / rebuild them, see README)
 data/
+results/
+scratch/
+demo_results/
+
+# Raw medical data formats: never commit a dataset by accident
+*.mat
+*.nii
+*.nii.gz
+*.zip
+
+# Local tool settings
+.claude/
+.vscode/
+.idea/
+
+# Windows / OneDrive / macOS clutter
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Secrets, if any are ever added
+.env
+.streamlit/secrets.toml

@@ -2,3 +2,6 @@ numpy
 scipy
 scikit-image>=0.22
 matplotlib
+streamlit
+h5py
+nibabel

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>Brain tumor detection with image processing</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+  @page { size: 1920px 1080px; margin: 0 }
+  html, body { margin: 0; padding: 0; background: #11161C }
+  section { width: 1920px; height: 1080px; box-sizing: border-box; position: relative;
+             overflow: hidden }
+  h1, h2, h3, p, ul { margin: 0 }
+  ul { padding-left: 36px }
+  aside { display: none }
+</style>
+</head>
+<body>
+<section id="pipeline" style="background:#11161C;color:#EEF1EC;font-family:'IBM Plex Sans', Arial, sans-serif;padding:72px 80px;display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;flex-direction:column;gap:6px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#F2994A">Introduction</p>
+<h1 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:60px;font-weight:700;line-height:1.1;color:#EEF1EC">Brain tumor detection with image processing</h1>
+</div>
+<p style="font-size:32px;line-height:1.4;color:#D5DCD8">This system looks at a brain MRI scan, finds the tumor and suggests its type: glioma, meningioma or pituitary. It uses classic image processing only. There is no AI and no training.</p>
+<div style="display:flex;gap:24px">
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#1A222B;border:1px solid #2B3743;border-radius:14px;padding:24px 28px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:30px;font-weight:600;line-height:1.2;color:#F2994A">What it uses</h3>
+<ul style="font-size:26px;line-height:1.35;color:#D5DCD8">
+<li>Python with NumPy, SciPy and scikit-image</li>
+<li>Filters to clean and sharpen the image</li>
+<li>Brightness thresholds to separate tissues</li>
+<li>Shape operations and measurements</li>
+</ul>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#1A222B;border:1px solid #2B3743;border-radius:14px;padding:24px 28px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:30px;font-weight:600;line-height:1.2;color:#F2994A">How it avoids AI</h3>
+<ul style="font-size:26px;line-height:1.35;color:#D5DCD8">
+<li>No training data and no learned model</li>
+<li>Every decision is a measurement checked against a written rule</li>
+<li>The same scan always gives the same answer</li>
+<li>Each step can be shown and explained</li>
+</ul>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:30px;font-weight:600;line-height:1.2;color:#EEF1EC">How it works</h3>
+<div style="display:grid;grid-template-columns:repeat(7, 1fr);gap:14px">
+<div style="display:flex;flex-direction:column;gap:8px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:12px">
+<img src="img/step1.png" alt="Brain MRI slice as loaded" style="width:213px;height:110px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:26px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">1</span> Load</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Read the scan as grayscale</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:12px">
+<img src="img/step2.png" alt="The slice after denoising" style="width:213px;height:110px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:26px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">2</span> Denoise</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Median filter removes speckle</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:12px">
+<img src="img/step3.png" alt="The slice after contrast enhancement" style="width:213px;height:110px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:26px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">3</span> Enhance</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">CLAHE boosts local contrast</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:12px">
+<img src="img/step4.png" alt="Orange outline of the area inside the skull" style="width:213px;height:110px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:26px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">4</span> Remove skull</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Threshold and erosion</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:12px">
+<img src="img/step6.png" alt="White mask of the brightest regions" style="width:213px;height:110px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:26px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">5</span> Find bright areas</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Otsu brightness thresholds</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:12px">
+<img src="img/step8.png" alt="Orange outline around the region kept as the tumor" style="width:213px;height:110px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:26px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">6</span> Check rules</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Size, shape and brightness</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:12px">
+<div style="height:110px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;background:#0A0D10;border-radius:6px">
+<p style="font-size:24px;line-height:1.2;color:#F2994A">Glioma</p>
+<p style="font-size:24px;line-height:1.2;color:#F2994A">Meningioma</p>
+<p style="font-size:24px;line-height:1.2;color:#F2994A">Pituitary</p>
+</div>
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:26px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">7</span> Suggest type</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Rules on location and look</p>
+</div>
+</div>
+</div>
+<aside>OPENING: This is a system that detects brain tumors on MRI scans using image processing. It finds the tumor, outlines it, and suggests which of three types it is: glioma, meningioma or pituitary tumor.
+
+WHAT IT USES: Python and three standard scientific libraries (NumPy, SciPy, scikit-image). The tools are classic image-processing operations: filters, brightness thresholds, shape operations (morphology) and measurements.
+
+HOW IT AVOIDS AI: An AI system learns its own rules from thousands of labelled examples, and those rules are hidden inside a model. This system has no learning step. Every decision is a number measured on the image and compared with a rule a person wrote down. Nothing is stored between scans, so the same scan always gives the same answer, and every step can be shown on screen.
+
+HOW IT WORKS:
+1. Load: the scan is read as a grayscale image and its brightness is rescaled to 0-1, so scans from different machines are comparable.
+2. Denoise: a median filter replaces each pixel with the middle value of its neighbours. Noise is removed; the tumor's edges stay sharp.
+3. Enhance: CLAHE stretches contrast in small tiles, so a faint region stands out from the tissue around it.
+4. Remove skull: the skull is bright and would look like a tumor. A threshold finds the head, then erosion (shrinking the shape) peels the skull away.
+5. Find bright areas: on a contrast MRI the tumor lights up. Otsu's method picks the brightness cut-offs that best separate the tissue types, and the brightest group is kept.
+6. Check rules: every bright blob is measured. Only one that is big enough, compact, clearly brighter than the brain, thick (not a thin blood vessel) and not touching the skull edge is kept.
+7. Suggest type: rules from radiology give each type points. Pituitary tumors sit at the centre of the head and are small. Meningiomas are very bright and even, out near the skull. Gliomas are patchier and sit inside the brain tissue. Most points wins, and the reasons are shown.
+
+IF ASKED:
+- Is thresholding learning? No. Otsu computes the cut-off from this one image with a fixed formula, every time.
+- How were the rules chosen? From radiology descriptions, checked on half the patients; the other half is kept for an untouched test.
+- How accurate is it? Tested on patients the rules never saw (1,843 slices): it finds the tumor in the right place in 46% of slices. When it is given the expert's outline, the type rules are right 81% of the time. On 22 healthy slices it raised 2 false alarms. Finding the tumor is the hard part; the typing rules hold up.
+- Is it a diagnosis? No. It points out a suspicious region and suggests a type.
+- What can't it do? Tumors darker than normal brain are invisible to a brightness-based search.</aside>
+</section>
+</body>
+</html>
