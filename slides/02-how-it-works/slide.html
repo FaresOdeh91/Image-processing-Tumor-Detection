@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>Finding the tumor and the fluid inside it</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+  @page { size: 1920px 1080px; margin: 0 }
+  html, body { margin: 0; padding: 0; background: #11161C }
+  section { width: 1920px; height: 1080px; box-sizing: border-box; position: relative;
+             overflow: hidden }
+  h1, h2, h3, p, ul { margin: 0 }
+  ul { padding-left: 36px }
+  aside { display: none }
+</style>
+</head>
+<body>
+<section id="how-it-works" style="background:#11161C;color:#EEF1EC;font-family:'IBM Plex Sans', Arial, sans-serif;padding:72px 80px;display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;flex-direction:column;gap:6px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#F2994A">How it works</p>
+<h1 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:60px;font-weight:700;line-height:1.1;color:#EEF1EC">Finding the tumor and the fluid inside it</h1>
+</div>
+<p style="font-size:30px;line-height:1.4;color:#D5DCD8">It finds the tumor’s bright, solid part and its dark, fluid-filled part, outlines both and suggests the type, using classic image processing only: no AI, no training.</p>
+<div style="display:flex;gap:20px">
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;background:#1A222B;border:1px solid #2B3743;border-radius:14px;padding:20px 24px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:28px;font-weight:600;line-height:1.2;color:#F2994A">What it uses</h3>
+<ul style="font-size:24px;line-height:1.35;color:#D5DCD8">
+<li>Python, NumPy, SciPy</li>
+<li>scikit-image filters</li>
+<li>Brightness thresholds (Otsu)</li>
+<li>Shape rules and measurements</li>
+</ul>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;background:#1A222B;border:1px solid #2B3743;border-radius:14px;padding:20px 24px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:28px;font-weight:600;line-height:1.2;color:#F2994A">How it avoids AI</h3>
+<ul style="font-size:24px;line-height:1.35;color:#D5DCD8">
+<li>No training data, no model</li>
+<li>Every decision is a written rule</li>
+<li>Same scan in, same answer out</li>
+<li>Every step can be shown</li>
+</ul>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;background:#1A222B;border:2px solid #1AD9FF;border-radius:14px;padding:20px 24px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:28px;font-weight:600;line-height:1.2;color:#1AD9FF">Finding the fluid</h3>
+<ul style="font-size:24px;line-height:1.35;color:#D5DCD8">
+<li>Fluid is dark, like background</li>
+<li>So dark areas are checked too</li>
+<li>Must be round, thick, inside</li>
+<li>Mirrored pairs are normal</li>
+</ul>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:30px;font-weight:600;line-height:1.2;color:#EEF1EC">The steps</h3>
+<div style="display:grid;grid-template-columns:repeat(8, 1fr);gap:12px">
+<div style="display:flex;flex-direction:column;gap:6px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:10px">
+<img src="img/1_load.png" alt="Side-view brain MRI slice with a tumor" style="width:187px;height:124px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:24px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">1</span> Load</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Read the scan</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:10px">
+<img src="img/2_denoise.png" alt="The slice after the median filter" style="width:187px;height:124px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:24px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">2</span> Denoise</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Median filter</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:10px">
+<img src="img/3_enhance.png" alt="The slice after contrast enhancement" style="width:187px;height:124px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:24px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">3</span> Enhance</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">CLAHE contrast</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:10px">
+<img src="img/4_skull.png" alt="Orange outline of the search area inside the skull" style="width:187px;height:124px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:24px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">4</span> Remove skull</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Threshold + erosion</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:10px">
+<img src="img/5_bright.png" alt="White mask of the brightest areas" style="width:187px;height:124px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:24px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">5</span> Bright areas</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Otsu thresholds</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;background:#1A222B;border:2px solid #1AD9FF;border-radius:12px;padding:10px">
+<img src="img/6_fluid.png" alt="Cyan mask of the fluid-dark areas, including a round one beside the tumor" style="width:185px;height:124px;object-fit:contain;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:24px;font-weight:600;line-height:1.2;color:#1AD9FF">6 Fluid areas</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">New: dark, round, one-sided</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:10px">
+<img src="img/7_rules_zoom.png" alt="Close-up of the tumor: orange outline around the solid part, cyan outline around the fluid-filled cyst beside it" style="width:187px;height:124px;object-fit:cover;background:#0A0D10;border-radius:6px">
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:24px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">7</span> Pick the tumor</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Solid part + fluid</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;background:#1A222B;border:1px solid #2B3743;border-radius:12px;padding:10px">
+<div style="height:124px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;background:#0A0D10;border-radius:6px">
+<p style="font-size:24px;line-height:1.2;color:#F2994A">Glioma</p>
+<p style="font-size:24px;line-height:1.2;color:#F2994A">Meningioma</p>
+<p style="font-size:24px;line-height:1.2;color:#F2994A">Pituitary</p>
+</div>
+<p style="font-family:'Space Grotesk', Arial, sans-serif;font-size:24px;font-weight:600;line-height:1.2;color:#EEF1EC"><span style="color:#F2994A">8</span> Suggest type</p>
+<p style="font-size:24px;line-height:1.3;color:#A9B4BE">Rules on place and look</p>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:80px;bottom:40px;width:1760px;font-size:24px;color:#7F8B96">Picture 7: <span style="color:#F2994A">orange</span> = solid tumor, <span style="color:#1AD9FF">cyan</span> = fluid inside it. Test patient 2935; 98% of the cyan is inside the doctor’s outline.</p>
+<aside>OPENING: This slide shows how the system works, step by step, on a real scan from a test patient. The new part is step 6: finding the fluid inside a tumor.
+
+WHY FLUID MATTERS: Many tumors, especially gliomas, contain fluid: cysts or dead tissue. On this kind of MRI that fluid is dark, as dark as the normal fluid around the brain. A system that only looks for bright tissue treats it as background and misses most of the tumor. In this dataset most gliomas are largely dark.
+
+THE STEPS:
+1. Load the scan as grayscale, brightness rescaled to 0–1.
+2. Denoise: a median filter takes the middle value of each pixel’s neighbours. Noise goes, edges stay sharp.
+3. Enhance: CLAHE boosts contrast in small tiles so faint regions stand out.
+4. Remove the skull: a threshold finds the head, erosion shrinks it inward past the skull.
+5. Bright areas: Otsu’s method picks the brightness cut-offs that best separate the tissues; the brightest group is the solid, enhancing tumor candidate.
+6. Fluid areas (new): the darkest group is fluid. A dark area counts as a fluid-filled tumor only if it is round and solid in shape, thick (not a groove between brain folds), inside the brain and off its edge, and NOT mirrored on the other side of the head. Normal fluid chambers (ventricles) come in mirrored pairs or sit on the midline; a tumor is usually on one side.
+7. Pick the tumor: the thickest, most tumor-like candidate wins. If the bright part forms the wall of the fluid area, both together are the tumor. Here: orange = solid part, cyan = fluid. 98% of the cyan area lies inside the doctor’s outline.
+8. Suggest the type with written rules: pituitary tumors sit at the centre and are small; meningiomas are bright, even and near the skull; gliomas are patchy, inside the brain, and often largely dark.
+
+IF ASKED:
+- Isn’t the mirror check a kind of learning? No. It flips the region across the head’s midline and measures how much of the flipped region is also dark. A fixed calculation, the same for every scan.
+- Did the fluid step help? Tested on 1,843 slices from patients the rules never saw: the tumor is found in the right place in 50.5% of slices (46% before); gliomas, the tumors that are mostly fluid, went from 29% to 40%. The type is right 71% of the time when the tumor is found (64% before), and 82.5% when the rules get the doctor’s outline.
+- Does it create false alarms on healthy brains? Checked on 22 healthy slices: still 2 false alarms, the same as before the fluid step.
+- What is still hard? Finding the tumor: about half the time it marks the wrong place. Meningiomas at the skull base are often taken for pituitary tumors.
+- Is this a diagnosis? No. It marks a suspicious region and suggests a type.</aside>
+</section>
+</body>
+</html>

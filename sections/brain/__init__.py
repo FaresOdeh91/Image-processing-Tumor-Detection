@@ -5,7 +5,8 @@ Brain section: MRI slices (FLAIR, T2 or contrast-enhanced T1).
              -> rule-based candidate filter -> measure -> rule-based tumor type
 """
 import numpy as np
-from skimage import filters
+from scipy import ndimage as ndi
+from skimage import filters, morphology
 
 from .. import common as c
 from . import detect, rules
@@ -26,8 +27,15 @@ def classify_region(img, mask, overrides=None):
     p = dict(PARAMS)
     p.update(overrides or {})
     enh = c.clahe(c.median_denoise(img, p["denoise_size"]), p["clahe_clip"])
-    head = detect.head_mask(enh, p["head_thresh_frac"])
-    return rules.classify(img, mask, head)
+    roi, head, _ = detect.skull_strip(enh, p["head_thresh_frac"], p["skull_erosion_frac"])
+    return rules.classify(img, mask, head, enh, _grey_level(enh, roi, p))
+
+
+def _grey_level(enh, roi, p):
+    """Brightness of normal grey matter: the second Otsu cut-off inside the brain area."""
+    if not roi.any():
+        return None
+    return filters.threshold_multiotsu(enh[roi], classes=p["otsu_classes"])[1]
 
 
 def run(img, method=None, overrides=None):
@@ -88,9 +96,54 @@ def run(img, method=None, overrides=None):
                                            p["open_radius"])
         steps.append(c.Step("6b. Grow to the full tumor", img, why, overlay=mask))
 
+    fluid = None
+    if thick and p["fluid_search"] and roi.any():
+        mask, fluid, why = _fluid_step(brain, roi, head, near, mask, p)
+        steps.append(c.Step("6c. Fluid-filled areas", img, why, overlay=mask, fluid=fluid))
+
     meas = c.measure_region(mask, p.get("pixel_spacing_mm"))
     tumor_type = None
     if meas["detected"]:
-        tumor_type = rules.classify(img, mask, head)
-        steps.append(c.Step("7. Tumor type rules", img, tumor_type["explanation"], overlay=mask))
-    return c.Result(NAME, steps, img, roi, mask, meas, tumor_type)
+        share = float(fluid.sum() / mask.sum()) if fluid is not None else 0.0
+        meas["fluid_px"] = int(fluid.sum()) if fluid is not None else 0
+        meas["fluid_share"] = round(share, 3)
+        tumor_type = rules.classify(img, mask, head, enh, _grey_level(enh, roi, p))
+        steps.append(c.Step("7. Tumor type rules", img, tumor_type["explanation"], overlay=mask,
+                            fluid=fluid))
+    return c.Result(NAME, steps, img, roi, mask, meas, tumor_type, fluid)
+
+
+def _thickness(mask, head):
+    """Radius of the widest circle that fits inside the region, relative to the head."""
+    if not mask.any():
+        return 0.0
+    return float(ndi.distance_transform_edt(mask).max() / np.sqrt(head.sum() / np.pi))
+
+
+def _fluid_step(brain, roi, head, near, mask, p):
+    """Look for a fluid-filled tumor, keep it if it beats the bright region, and mark
+    the fluid part of whatever is kept. Returns (tumor_mask, fluid_mask, explanation)."""
+    level = filters.threshold_multiotsu(brain[roi], classes=p["otsu_classes"])[0]
+    lesion, l_thick, why = detect.find_fluid_lesion(
+        brain, roi, head, near, level, min_solidity=p["fluid_min_solidity"],
+        max_mirror=p["fluid_mirror_max"])
+    b_thick = _thickness(mask, head)
+    if lesion.any() and l_thick > b_thick:
+        wall = mask & ndi.binary_dilation(lesion, iterations=2)
+        if wall.any():
+            mask = ndi.binary_fill_holes(lesion | mask)
+            why += (f" It is thicker than the bright region ({l_thick:.3f} vs {b_thick:.3f}) and "
+                    f"the bright region forms its wall, so both together are the tumor.")
+        else:
+            mask = lesion
+            why += (f" It is thicker than the best bright region ({l_thick:.3f} vs "
+                    f"{b_thick:.3f}), so the fluid-filled region is taken as the tumor.")
+    elif lesion.any():
+        why += (f" The bright region is thicker ({b_thick:.3f} vs {l_thick:.3f}), so it stays "
+                f"the tumor.")
+    fluid = mask & (brain < level)
+    fluid = ndi.binary_opening(fluid, structure=morphology.disk(2)) if fluid.any() else fluid
+    if mask.any():
+        why += (f" Fluid inside the tumor: {fluid.sum() / mask.sum():.0%} of its area "
+                f"(cyan outline)." if fluid.any() else " The tumor has no fluid-filled part.")
+    return mask, fluid, why

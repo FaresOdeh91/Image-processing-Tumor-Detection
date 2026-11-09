@@ -13,6 +13,7 @@ One-slide presentations of the system. Each folder holds:
 | Folder | Content |
 |---|---|
 | [`01-introduction`](01-introduction/) | What the system is, what it uses, how it avoids AI, and its 7 steps |
+| [`02-how-it-works`](02-how-it-works/) | How it works, including the fluid step: 8 steps on a real test-patient scan, the solid tumor in orange and its fluid in cyan |
 
 The step pictures come from the system itself (`python main.py detect ...`). A
 slide is re-exported with `scripts/export_slide.py`.

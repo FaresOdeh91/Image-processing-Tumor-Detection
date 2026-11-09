@@ -25,6 +25,10 @@ PARAMS = {
     "brain_margin_frac": 0.06,   # how far outside that outline a tumor may still reach
     "max_edge_touch": 0.05,      # share of a blob allowed to touch the search area's edge
     "grow_frac": 0.05,           # hysteresis growth reach, as a fraction of the head radius
+    # fluid-filled tumors (see find_fluid_lesion)
+    "fluid_search": True,
+    "fluid_min_solidity": 0.8,   # a cyst is round and solid in shape
+    "fluid_mirror_max": 0.5,     # above this, the mirror image is dark too: normal anatomy
     "rg_tolerance": 0.15,
     "seed_sigma": 3,
     "ws_margin": 0.05,
@@ -241,61 +245,70 @@ def grow_hysteresis(region, img, roi, low, head, grow_frac=0.05, open_radius=2):
                    f"({int(grown.sum())} px in total).")
 
 
-def find_fluid(tumor, img, roi, fluid_level, contact_min=0.5, max_ratio=2.0, snap_radius=2,
-               min_area=30):
-    """Fluid inside or attached to the tumor (cyst, dead/necrotic core).
+def mirror_dark_share(region, dark, head):
+    """Share of the region's left-right mirror image (about the head's midline)
+    that is also dark. Normal fluid chambers come in mirrored pairs or sit on the
+    midline, so they score high; a tumor is usually on one side and scores low."""
+    col = ndi.center_of_mass(head)[1]
+    rr, cc = np.nonzero(region)
+    mc = np.round(2 * col - cc).astype(int)
+    ok = (mc >= 0) & (mc < region.shape[1])
+    if not ok.any():
+        return 0.0
+    dark = ndi.binary_dilation(dark, iterations=3)       # tolerate a slightly tilted head
+    return float(dark[rr[ok], mc[ok]].mean())
 
-    Fluid is dark on contrast MRI, as dark as the fluid around the brain, so a
-    brightness-based search treats it as background. Here a dark region is
-    counted as part of the tumor when the tumor's bright wall surrounds it:
 
-      * dark = darker than `fluid_level` (the darkest Otsu cut-off: fluid level),
-      * thin links are snapped first (opening with a small disk), so a cyst that
-        touches a ventricle through a narrow channel is not merged with it,
-      * at least `contact_min` of the dark region's border touches the tumor,
-      * it does not touch the edge of the brain area (fluid around the brain),
-      * it is not more than `max_ratio` times the size of the tumor's bright part.
+def find_fluid_lesion(img, roi, head, near_brain, fluid_level, snap_radius=3, min_frac=0.002,
+                      max_frac=0.25, max_edge_touch=0.05, min_inside=0.8, min_thick=0.04,
+                      min_solidity=0.8, max_mirror=0.5):
+    """A fluid-filled tumor: a dark region (fluid level) that is round, thick, inside
+    the brain, off its edge and NOT mirrored on the other side of the head.
 
-    Healthy fluid spaces (ventricles, grooves between folds) are bordered mostly
-    by normal brain, so they fail the contact rule. Returns (fluid_mask, explanation).
+    Returns (mask, thickness, explanation); mask is empty if nothing passes.
     """
-    empty = np.zeros_like(tumor, dtype=bool)
-    if not tumor.any():
-        return empty, "No tumor, so no fluid search."
+    empty = np.zeros_like(roi, dtype=bool)
+    if not roi.any() or not head.any():
+        return empty, 0.0, "No brain area, so no fluid search."
+    head_r = np.sqrt(head.sum() / np.pi)
+    head_c = np.array(ndi.center_of_mass(head))
     dark = roi & (img < fluid_level)
-    dark = ndi.binary_opening(dark, structure=morphology.disk(snap_radius))
-    lab = measure.label(dark)
-    near_tumor = ndi.binary_dilation(tumor, structure=morphology.disk(2))
-    edge = roi & ~ndi.binary_erosion(roi, structure=morphology.disk(3))
-    t_area = tumor.sum()
-    fluid = empty.copy()
-    checked = kept = 0
+    m = ndi.binary_fill_holes(ndi.binary_opening(dark, structure=morphology.disk(snap_radius)))
+    lab = measure.label(m)
+    depth = ndi.distance_transform_edt(roi)
+    rejected = {"too small or too large": 0, "touching the brain's edge": 0,
+                "outside the brain": 0, "thin or irregular": 0, "mirrored (normal anatomy)": 0}
+    best, best_score, best_thick = None, -1.0, 0.0
     for rp in measure.regionprops(lab):
-        if rp.area < min_area:
-            continue
-        sl = rp.slice
-        comp = lab[sl] == rp.label
-        if not near_tumor[sl][comp].any():
-            continue                                   # not next to the tumor at all
-        checked += 1
-        pad = tuple(slice(max(s.start - 3, 0), s.stop + 3) for s in sl)
-        comp_p = lab[pad] == rp.label
-        ring = ndi.binary_dilation(comp_p, structure=morphology.disk(1)) & ~comp_p
-        contact = (ring & near_tumor[pad]).sum() / max(ring.sum(), 1)
-        if contact < contact_min or (comp & edge[sl]).any() or rp.area > max_ratio * t_area:
-            continue
-        fluid[sl] |= comp
-        kept += 1
-    fluid &= ~tumor
-    why = (f"Fluid is as dark as the fluid around the brain (below {fluid_level:.2f}), so a "
-           f"search for bright tissue skips it. {checked} dark region(s) touch the tumor; a "
-           f"region counts as tumor fluid only if the tumor's bright wall covers at least "
-           f"{contact_min:.0%} of its border, it does not reach the edge of the brain and it is "
-           f"at most {max_ratio:g}× the bright part's size. Healthy fluid spaces (ventricles, "
-           f"grooves between folds) are bordered mostly by normal brain and fail this rule. ")
-    if kept:
-        why += (f"{kept} region(s) passed: {int(fluid.sum())} px of fluid, "
-                f"{fluid.sum() / (fluid.sum() + t_area):.0%} of the tumor.")
-    else:
-        why += "None passed: the tumor looks solid."
-    return fluid, why
+        if rp.area < min_frac * head.sum():
+            continue                                     # specks: not worth reporting
+        reg = lab == rp.label
+        if rp.area > max_frac * roi.sum():
+            rejected["too small or too large"] += 1
+        elif (depth[reg] < 4).mean() > max_edge_touch:
+            rejected["touching the brain's edge"] += 1
+        elif near_brain is not None and near_brain[reg].mean() < min_inside:
+            rejected["outside the brain"] += 1
+        else:
+            thick = ndi.distance_transform_edt(reg).max() / head_r
+            if thick < min_thick or rp.solidity < min_solidity:
+                rejected["thin or irregular"] += 1
+            elif mirror_dark_share(reg, dark, head) > max_mirror:
+                rejected["mirrored (normal anatomy)"] += 1
+            else:
+                cd = np.linalg.norm(np.array(rp.centroid) - head_c) / head_r
+                score = thick * (1.2 - min(cd, 1))
+                if score > best_score:
+                    best, best_score, best_thick = reg, score, thick
+    rules = (f"Fluid (cysts, dead tissue) is as dark as the fluid around the brain (below "
+             f"{fluid_level:.2f}), so a search for bright tissue treats it as background. Dark "
+             f"regions are therefore checked as tumor candidates too. A fluid-filled tumor must be "
+             f"round and solid in shape (solidity ≥ {min_solidity}), thick (not a groove between "
+             f"folds), inside the brain and off its edge (not the fluid around the brain), and "
+             f"NOT mirrored on the other side of the head: normal fluid chambers (ventricles) "
+             f"come in mirrored pairs or sit on the midline, a tumor is usually on one side.")
+    rej = ", ".join(f"{v} {k}" for k, v in rejected.items() if v)
+    if best is None:
+        return empty, 0.0, rules + " None passed" + (f" ({rej})." if rej else ".")
+    return best, best_thick, (rules + f" One passed (thickness {best_thick:.3f})."
+                              + (f" Rejected: {rej}." if rej else ""))

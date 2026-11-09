@@ -50,13 +50,26 @@ it uses. The owner needs to be able to explain the system.
   (non-contrast T1), empty masks. `scripts/make_healthy_set.py`.
 - `samples/`: 3 test-patient tumors (one per type) + 2 healthy slices for the app.
 
-## Results (2026-10-14)
-Test patients (folds 3-5, 1,843 slices), default `thick_blob`:
-- tumor found in the right place 46% (843), Dice 0.27; type right when found 64%
-- type rules alone on the expert outline: 81% (dev: 82%; always-glioma: 48%)
-- healthy slices: 2 / 22 false alarms
-Original `otsu` (brightest blob x size) on the same test patients: 25% found,
-Dice 0.15, 4 / 22 healthy false alarms.
+## Publishing
+- GitHub (public): https://github.com/FaresOdeh91/Image-processing-Tumor-Detection,
+  branch `main`. Remote URL carries the username (`https://FaresOdeh91@github.com/...`)
+  so Git Credential Manager uses FaresOdeh91; the machine's default GitHub login is
+  erptechno26 (TechnoCPT), which has no write access here. Don't change that login.
+- Google Drive copy: `G:\My Drive\FARES ODEH TUMOR DETECTION\` (Drive for desktop),
+  shared with the owner's professor. Refresh it from `git archive HEAD` after pushes.
+- Slides: `slides/NN-name/` (png/pdf/html/notes) exported with
+  `scripts/export_slide.py` from the Slides artifacts
+  (intro https://claude.ai/artifact/2wVJmU6GuR7G8toHNMRw3k,
+  how-it-works https://claude.ai/artifact/WKuD6mALJt8NXpLmWHbwib).
+
+## Results (test patients, folds 3-5, 1,843 slices; healthy set 22 slices)
+| | fluid step (2026-11-09, default) | before it (2026-10-14) | original `otsu` |
+|---|---|---|---|
+| tumor found in right place | 50.5% (glioma 40, menin 57, pit 61) | 46% (glioma 29) | 25% |
+| Dice | 0.30 | 0.27 | 0.15 |
+| type right when found | 71% | 64% | 62% |
+| type rules on expert outline | 82.5% (glioma recall 92%) | 81% | |
+| healthy false alarms | 2/22 | 2/22 | 4/22 |
 
 ## Notes / decisions
 - Detection, not typing, is the bottleneck. The brightest Otsu class on contrast T1
@@ -72,11 +85,24 @@ Dice 0.15, 4 / 22 healthy false alarms.
   healthy slices.
 - Tried and rejected: LoG scale-space blob seeds (seed in tumor 3-23%), tight
   brain mask as search area, hysteresis reach 0.1 (overgrows).
-- Tumors darker than brain (cystic / non-enhancing gliomas) are invisible to a
-  brightness detector by design.
+- Fluid (`find_fluid_lesion`, step "6c"): 86% of dev gliomas are >=30% darker than
+  grey matter (meningioma 3%, pituitary 6%). Dark fluid-level regions (darkest Otsu
+  cut) are tumor candidates if round (solidity >= 0.8), thick, inside the brain
+  outline, off the edge, and NOT mirrored: `mirror_dark_share` flips the region
+  about the head's vertical midline; > 0.5 dark = normal anatomy (ventricles).
+  Without the mirror rule healthy false alarms went 2 -> 13/22; with it 2/22.
+  A fluid lesion wins if thicker than the bright region; a touching bright wall is
+  merged. `Result.fluid` / `Step.fluid` carry the fluid mask (cyan in the app).
+- Glioma type rule "+1 if dark_share >= 0.30" (darker than grey matter = 2nd Otsu
+  cut): dev expert-outline accuracy 85.5% -> 88.7%. A fluid-level-only version
+  barely helped (85.8%).
+- Tried and rejected for fluid: adding dark regions that touch a found bright tumor
+  (border contact or convex hull). On correct detections only 1-22% of what it
+  added was tumor; Dice fell. Enclosed fluid was already covered by fill-holes.
 - Multi-Otsu 4 classes; scipy.ndimage binary morphology (skimage binary_* deprecated).
 
 ## Next steps
 1. Breast section (mammograms): find a mini-MIAS source, `sections/breast/`.
-2. Brain: plane-aware rules (axial/coronal/sagittal) for location features.
-3. Brain: a separate "dark lesion" search for non-enhancing tumors.
+2. Brain: plane-aware rules (axial/coronal/sagittal); the mirror check is
+   meaningless on sagittal slices.
+3. Brain: skull-base meningiomas are often called pituitary (meningioma recall 60%).

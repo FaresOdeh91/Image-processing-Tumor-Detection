@@ -23,7 +23,7 @@ section, then give it an image of that body part.
 
 ```
 load → median denoise → CLAHE → skull removal → brain outline → bright regions
-     → rule-based selection → hysteresis growth → type rules
+     → rule-based selection → hysteresis growth → fluid-filled areas → type rules
 ```
 
 | Step | What it does | Why it needs no AI |
@@ -36,7 +36,8 @@ load → median denoise → CLAHE → skull removal → brain outline → bright
 | Bright regions | Multi-level Otsu splits the brightness histogram into 4 groups; keep the brightest | Otsu computes the cut-offs from this image alone |
 | Selection | Reject blobs that are too small, irregular, not clearly brighter than the brain, or touching the search edge. Keep the best brightness × thickness × closeness-to-centre × share-inside-brain. Thin bright lines are blood vessels. | Written rules |
 | Growth | Hysteresis (as in Canny): extend the chosen core into connected, moderately bright pixels nearby | Fixed rule |
-| Type | Points per type from radiology signs: **pituitary**: near the head's centre, small. **meningioma**: very bright, evenly bright, out near the skull. **glioma**: weak or patchy brightness, inside the brain tissue. Most points wins; the reasons are listed. | Written rules |
+| Fluid-filled areas | Cysts and dead tissue are as dark as the fluid around the brain, so a bright-only search treats them as background. Dark (fluid-level) regions are checked as tumor candidates too: round and solid in shape, thick, inside the brain, off its edge, and **not mirrored** on the other side of the head (normal fluid chambers come in mirrored pairs or sit on the midline). If one is thicker than the bright region it becomes the tumor, together with any bright wall touching it. The fluid part is outlined in cyan and its share reported. | Threshold + morphology + a mirror comparison |
+| Type | Points per type from radiology signs: **pituitary**: near the head's centre, small. **meningioma**: very bright, evenly bright, out near the skull. **glioma**: weak or patchy brightness, inside the brain tissue, and at least 30% darker than normal grey matter (fluid, dead or non-enhancing tissue). Most points wins; the reasons are listed. | Written rules |
 
 Other detection methods (`otsu`, `region_growing`, `watershed`) remain
 selectable for comparison.
@@ -48,27 +49,34 @@ Thresholds were chosen from radiology descriptions and checked on the
 **test** patients (folds 3–5, 1,843 slices), which were never looked at while
 writing the rules.
 
-| | `thick_blob` (default) | `otsu` (original) |
-|---|---|---|
-| Tumor found in the right place | **46%** (843) | 25% (461) |
-| Mean overlap with expert outline (Dice) | 0.27 | 0.15 |
-| Type correct, when the tumor was found | 64% | 62% |
-| False alarms on 22 healthy slices | 2 | 4 |
+| | **With fluid step** (default) | Before the fluid step | `otsu` (original) |
+|---|---|---|---|
+| Tumor found in the right place | **50.5%** (930) | 46% (843) | 25% (461) |
+| → gliomas / meningiomas / pituitary | 40% / 57% / 61% | 29% / 56% / 62% | |
+| Mean overlap with expert outline (Dice) | **0.30** | 0.27 | 0.15 |
+| Type correct, when the tumor was found | **71%** | 64% | 62% |
+| False alarms on 22 healthy slices | **2** | 2 | 4 |
 
-Type rules alone, applied to the expert's outline: **81%** correct on test
-patients (82% on development; always answering "glioma" would score 48%).
+Type rules alone, applied to the expert's outline: **82.5%** correct on test
+patients (81% before the dark-share rule; always answering "glioma" would score 48%).
 
 | true ↓ / suggested → | glioma | meningioma | pituitary | recall |
 |---|---|---|---|---|
-| glioma | 722 | 50 | 71 | 86% |
-| meningioma | 50 | 260 | 119 | 61% |
-| pituitary | 46 | 16 | 509 | 89% |
+| glioma | 773 | 33 | 37 | 92% |
+| meningioma | 54 | 256 | 119 | 60% |
+| pituitary | 63 | 16 | 492 | 86% |
+
+Why the fluid step matters: on the development patients, 86% of gliomas are at
+least 30% darker than normal grey matter (fluid or dead tissue), against 3% of
+meningiomas and 6% of pituitary tumors. A bright-only search was treating most of
+each glioma as background.
 
 **Detection is the weak step, not typing.** Known reasons:
 - Mixed orientations: on side and front views the face and neck contain bright
   fat that competes with the tumor.
-- Tumors darker than the brain (cystic or non-enhancing gliomas) are invisible
-  to a brightness-based search, by design.
+- Fluid-filled tumors on a **side view** cannot use the mirror check (a side view
+  has no left/right twin), so normal fluid chambers there are told apart by shape
+  alone.
 - Skull-base meningiomas sit near the centre and are confused with pituitary
   tumors.
 

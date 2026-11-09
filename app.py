@@ -114,7 +114,10 @@ with st.expander("How does this work without AI?"):
         "3. **Find the abnormal region**: a tumor differs in brightness from healthy tissue, "
         "so brightness thresholds (Otsu), flood filling or watershed separate it.\n"
         "4. **Check it with rules**: big enough, compact, clearly brighter than normal.\n"
-        "5. **Suggest a type** from radiology rules about location, size, brightness and "
+        "5. **Look for fluid**: cysts and dead tissue are as dark as the fluid around the "
+        "brain, so dark, round, one-sided regions are checked as well. Normal fluid chambers "
+        "come in mirrored pairs, so a dark region whose mirror image is also dark is ignored.\n"
+        "6. **Suggest a type** from radiology rules about location, size, brightness and "
         "evenness. Each rule that applies adds points; the reasons are listed.\n\n"
         "It finds *suspicious regions* and *suggests* a type. It is not a diagnosis.")
 

@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 BROWSERS = [
@@ -84,9 +85,13 @@ def main(slide, out_dir, *maps):
         for name, flags in (("slide.png", [f"--screenshot={(out / 'slide.png').resolve()}"]),
                             ("slide.pdf", ["--no-pdf-header-footer",
                                            f"--print-to-pdf={(out / 'slide.pdf').resolve()}"])):
+            (out / name).unlink(missing_ok=True)
             subprocess.run(common + flags + [url], capture_output=True, timeout=120)
-            if (out / name).exists():
-                written.append(name)
+            for _ in range(40):                  # the browser can finish writing after it returns
+                if (out / name).exists() and (out / name).stat().st_size > 0:
+                    written.append(name)
+                    break
+                time.sleep(0.5)
     missing = {"slide.png", "slide.pdf"} - set(written)
     print(f"wrote {out}: slide.html, {', '.join(written)}"
           + (", speaker-notes.md" if notes else "")

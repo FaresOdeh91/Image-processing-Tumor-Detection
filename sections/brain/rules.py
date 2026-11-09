@@ -22,9 +22,13 @@ from skimage import measure
 TYPES = ["glioma", "meningioma", "pituitary"]
 
 
-def features(img, mask, head):
+def features(img, mask, head, enh=None, dark_level=None):
     """Measurements of the tumor region, all normalised so they do not depend
-    on image size or scanner brightness."""
+    on image size or scanner brightness.
+
+    enh, dark_level: the contrast-enhanced image and the brightness of normal grey
+    matter (the second Otsu cut-off); when given, `dark_share` is the part of the
+    tumor darker than grey matter (fluid, dead or non-enhancing tissue)."""
     head_area = head.sum()
     head_r = np.sqrt(head_area / np.pi)                    # radius of an equal-area disk
     hc = np.array(ndi.center_of_mass(head))
@@ -37,7 +41,7 @@ def features(img, mask, head):
     depth = ndi.distance_transform_edt(head)
     vals = img[tumor]
     brain_ref = np.median(img[head & ~tumor])
-    return {
+    f = {
         "size": r.area / head_area,                         # share of the head
         "center_dist": float(np.linalg.norm(tc - hc) / head_r),
         "min_depth": float(depth[tumor].min() / head_r),    # 0 = touches the scalp
@@ -46,6 +50,9 @@ def features(img, mask, head):
         "solidity": float(r.solidity),
         "eccentricity": float(r.eccentricity),
     }
+    if enh is not None and dark_level is not None:
+        f["dark_share"] = float((enh[tumor] < dark_level).mean())
+    return f
 
 
 # Each rule: (type, test on the features, points, reason shown to the user).
@@ -69,6 +76,9 @@ RULES = [
     ("glioma", lambda f: f["unevenness"] > 0.25, 1,
      "its brightness is patchy inside ({unevenness:.2f} spread, over 0.25), e.g. a dark "
      "core with a bright rim"),
+    ("glioma", lambda f: f.get("dark_share", 0) >= 0.30, 1,
+     "{dark_share:.0%} of it is darker than normal grey matter (fluid, dead or non-enhancing "
+     "tissue; at least 30%), while meningiomas and pituitary tumors light up with contrast"),
     ("glioma", lambda f: 0.30 <= f["center_dist"] < 0.55, 1,
      "it lies within the brain tissue, neither at the centre nor out at the skull "
      "({center_dist:.2f} of the head radius from the centre)"),
@@ -101,8 +111,8 @@ def score(f):
     return best, scores, reasons
 
 
-def classify(img, mask, head):
-    f = features(img, mask, head)
+def classify(img, mask, head, enh=None, dark_level=None):
+    f = features(img, mask, head, enh, dark_level)
     label, scores, reasons = score(f)
     ranked = sorted(TYPES, key=lambda t: (t != label, -scores[t]))
     margin = scores[ranked[0]] - scores[ranked[1]]
